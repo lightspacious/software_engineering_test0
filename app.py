@@ -193,8 +193,7 @@ def admin():
     if session['identity'] != '2':  # 仅管理员可以访问
         print(session['identity'],"-------------------------")
         return "<script>alert('您无权限访问该页面！');window.history.back();</script>"
-        #return render_template('main_info.html', users=users)
-
+        
     # 查询所有用户数据
     users = User.query.all()
     return render_template('admin.html', users=users)
