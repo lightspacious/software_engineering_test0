@@ -29,7 +29,6 @@ class User(db.Model):
     identity = db.Column(db.CHAR(1), nullable=False)
     online = db.Column(db.Boolean, default=False, nullable=False)
     mail = db.Column(db.String(255))
-    # farm = db.Column(db.Integer)
 CORS(app)
 
 @app.route('/')
