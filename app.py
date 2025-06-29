@@ -114,7 +114,6 @@ def signinsign_up():
         return redirect(url_for('login'))
     return render_template('sign.html')
 
-# @app.route('/')
 @app.route('/main_info')
 def main_info():
     if 'identity' not in session:
