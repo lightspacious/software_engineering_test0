@@ -1,0 +1,1076 @@
+{% extends "base.html" %}
+
+{% block content %}
+<style>
+    /* 重置所有元素的margin和padding */
+    * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+    }
+
+    /* 确保html和body元素占满整个视口 */
+    html, body {
+        width: 100%;
+        height: 100%;
+        overflow: auto;
+    }
+
+    /* 主容器占满整个父元素 */
+    .container {
+        display: grid;
+        grid-template-columns: 3fr 1fr; /* 左2/3，右1/3 */
+        width: 100%;
+        height: 100vh; /* 使用视口高度单位 */
+        gap: 10px;
+        padding: 10px;
+    }
+
+    .left-panel {
+        display: grid;
+        grid-template-rows: 1fr 1fr; /* 上下等分 */
+        gap: 10px;
+        height: 100vh; /* 确保高度占满父容器 */
+    }
+
+    .left-top {
+        display: grid;
+        grid-template-columns: 3fr 4fr; /* 左右等分 */
+        gap: 10px;
+        height: 100%; /* 确保高度占满父容器 */
+    }
+
+    .module {
+    background-color: rgba(0, 0, 0, 0.3);
+    padding: 15px;
+    border-radius: 5px;
+    color: white;
+    height: 100%; /* 确保高度占满父容器 */
+    overflow: hidden; /* 修改为 auto 以显示滚动条 */
+}
+
+
+    .module-title {
+        text-align: center;
+        color: #00c3ff;
+        margin-bottom: 10px;
+        font-size: 18px;
+    }
+
+    .right-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    height: 100vh; /* 减去 padding 和 gap 的影响 */
+}
+
+.combined-module {
+    background-color: rgba(0, 0, 0, 0.3);
+    padding: 15px;
+    border-radius: 5px;
+    color: white;
+    display: flex;
+    flex-direction: column;
+    height: 100%; /* 确保高度占满父容器 */
+    overflow: auto; /* 修改为 auto 以显示滚动条 */
+    flex: 1; /* 确保模块填满可用空间 */
+    min-height: 0; /* 允许内容被压缩 */
+}
+
+/*地图容器大小 begin*/
+    #map-container {
+        width: 495px;
+        height: 310px;
+        /* left:-10px; */
+    }
+/* 地图 end */
+
+/* 左上 start */
+/* 上部分：总量与今日新增 */
+    .total-data {
+        position: relative;       /* 关键：设置为定位上下文 */
+        display: inline-block;    /* 保证容器大小贴合内容 */
+        padding: 10px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 8px;
+        gap: 10px;
+    }
+    .digit-boxes {
+        display: flex;
+        gap: 4px;
+        margin-left: 20px;
+    }
+    .digit-box {
+      background: #003d66;
+      padding: 8px 10px;
+      border-radius: 6px;
+      font-size: 26px;
+      min-width: 26px;
+      text-align: center;
+    }
+    .unit {
+        position: absolute;       /* 关键：将单位绝对定位 */
+        bottom: 10px;                /* 锚定底部 */
+        right: 220px;                 /* 锚定右边 */
+        font-size: 16px;
+        margin-left: 6px;
+    }
+    .today-stats {
+      font-size: 16px;
+      line-height: 1.4;
+      margin-right: 80px;
+    }
+
+
+    /* 中部分：进程 + 磁盘 */
+    .charts {
+      display: flex;
+      justify-content: flex-start;
+      margin-bottom: 20px;
+      gap: 80px;
+      margin-bottom: 16px;
+    }
+    .chart {
+      width: 140px;
+      height: 140px;
+      margin-left: 50px;
+    }
+    .disk-info {
+      font-size: 12px;
+      line-height: 1.4;
+      margin-top: 20px;
+      margin-right: 50px;
+    }
+
+    .separator-line {
+      height: 2px;
+      background-color: #00aaff;
+      margin: 20px 0;
+    }
+
+    /* 磁盘使用 */
+    .cylinder-container {
+    width: 100px;
+    height: 140px;
+    position: relative;
+    display: flex;
+    justify-content: center;
+    align-items: flex-end;
+    margin-top: -15px;
+    }
+
+    /* 外轮廓（线框） */
+    .cylinder-outline {
+    width: 80px;
+    height: 120px;
+    position: relative;
+    border-left: 1px solid rgba(0, 195, 255, 0.4);
+    border-right: 1px solid rgba(0, 195, 255, 0.4);
+    border-radius: 50% / 10%;
+    box-sizing: border-box;
+    }
+
+    /* 顶部椭圆轮廓 */
+    .cylinder-outline::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 16px;
+    border-radius: 50%;
+    border: 1px solid rgba(0, 195, 255, 0.4);
+    }
+
+    /* 液体部分 */
+    .cylinder-liquid {
+    position: absolute;
+    bottom: 0;
+    width: 100%;
+    height: 66.6%; /* 根据填充比例调整 */
+    background-color: rgba(43, 173, 230, 0.85);
+    border-radius: 0 0 50% 50% / 10% 10% 10% 10%;
+    animation: floatLiquid 3s ease-in-out infinite;
+    overflow: visible;
+    }
+
+    /* 液体顶部椭圆轮廓 */
+    .cylinder-liquid::before {
+    content: '';
+    position: absolute;
+    top: -12px; /* 顶部稍微超出液体主体 */
+    left: 0;
+    width: 100%;
+    height: 24px; /* 高度调整弧度 */
+    background: linear-gradient(to top, #00b4ff, #66d4ff);
+    border-radius: 50% / 50%; /* 完整椭圆形 */
+    box-shadow: 0 0 6px rgba(0, 180, 255, 0.85); /* 发光效果 */
+    }
+
+    /* 轻微上下浮动动画 */
+    @keyframes floatLiquid {
+    0%, 100% {
+        transform: translateY(0);
+        opacity: 0.95;
+    }
+    50% {
+        transform: translateY(-4px);
+        opacity: 1;
+    }
+    }
+
+     /* 下部分：硬件状态条 */
+    .hardware-status label {
+      display: block;
+      margin: 6px 0 2px;
+    }
+    .bar {
+      background: #03345a;
+      height: 15px;
+      border-radius: 5px;
+      overflow: hidden;
+      margin-bottom: 8px;
+    }
+    .bar-inner {
+      height: 100%;
+      width: 0;
+      transition: width 0.6s ease;
+    }
+    .cpu { background-color: #00c3ff86; }
+    .mem { background-color: #f7151570; }
+    .gpu { background-color: #f1c40f8e; }
+/* 左上 end */
+</style>
+
+<!-- 地图数据 begin-->
+<script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+<!-- 地图数据 end -->
+<div class="container">
+    <!-- 左侧大面板 -->
+    <div class="left-panel">
+        <!-- 左上小面板，分为左右两部分 -->
+        <div class="left-top">
+            <!-- 模块A1 -->
+            <div class="module">
+                <div class="module-title" style="font-size: 18px; color: #fbfcfd; text-align: center; margin-bottom: 10px;">数据总量</div>
+                <!-- 数据总量与今日新增 -->
+                <div class="total-data">
+                    <div class="digit-boxes" id="total-boxes"></div>
+                    <div class="today-stats">
+                        今日新增：<span id="today-add">8</span><br />
+                        今日处理：<span id="today-processed">8</span>
+                    </div>
+                </div>
+
+                <!-- 分界线 -->
+                <div class="separator-line"></div>
+
+                <!-- 圆圈图与柱状图 -->
+                <div class="charts">
+                    <div class="chart" id="circle-chart"></div>
+                    <div>
+                        <div style="display: flex; align-items: center;">
+                            <!-- <div style="width: 80px; height: 120px; background: linear-gradient(to top, rgba(0,195,255,0.6), rgba(0,255,255,0.2)); border-radius: 50%/10%; position: relative; box-shadow: 0 4px 15px rgba(0, 195, 255, 0.5), inset 0 0 8px rgba(255,255,255,0.2); overflow: hidden;"> -->
+                                <!-- 动态填充部分 -->
+                                <div class="cylinder-container">
+                                    <div class="cylinder-outline">
+                                        <div class="cylinder-liquid"></div>
+                                    </div>
+                                </div>
+                            <!-- </div> -->
+                            <div class="disk-info" style="text-align: left; margin-top: 60px;">
+                                <div>磁盘：</div>
+                                <div>已使用 1000T</div>
+                                <div>剩余 1500T</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 硬件状态 -->
+                <div class="hardware-status">
+                    <label>CPU 运行状态</label>
+                    <div class="bar"><div class="bar-inner cpu" id="cpu-bar"></div></div>
+
+                    <label>内存运行状态</label>
+                    <div class="bar"><div class="bar-inner mem" id="mem-bar"></div></div>
+
+                    <label>GPU 运行状态</label>
+                    <div class="bar"><div class="bar-inner gpu" id="gpu-bar"></div></div>
+                </div>
+            </div>
+            <!-- 模块A2 -->
+            <div class="module">
+                <div class="module-title">数据中心分布</div>
+                <!-- <p>内容区域 A2</p> -->
+                <!-- 地图 -->
+                <div id="map-container"></div>
+            </div>
+        </div>
+
+        
+        <!-- 左下模块B -->
+       <!-- 模块 B -->
+       <div class="module">
+        <div class="module-title">鱼类价格数据统计</div>
+      
+        <!-- 地区和鱼种选择 -->
+        <div style="display: flex; gap: 10px; margin-bottom: 1px; align-items: center;">
+          <label>地区：</label>
+          <select id="region" onchange="updateFishPriceChart()">
+            <option value="广东茂名">广东茂名</option>
+            <option value="青岛胶州">青岛胶州</option>
+          </select>
+          <label>鱼种：</label>
+          <select id="fish" onchange="updateFishPriceChart()">
+            <option value="鱼苗">鱼苗</option>
+            <option value="草鱼">草鱼</option>
+          </select>
+        </div>
+      
+        <!-- 内容两栏布局 -->
+        <div style="display: flex; gap: 2px; align-items: flex-start;">
+      
+          <!-- 左图表 -->
+          <div style="flex: 2;">
+            <div style="position: relative; width: 100%; height: 280px;">
+                <div style="position: absolute; top: 16px; left: 50%; transform: translateX(-50%); font-size: 14px; color: #00c3ff; z-index: 10;">
+                    <span id="region-label">广东茂名</span> <span id="fish-label">鱼苗</span> 七天内行情趋势图
+                  </div>
+              <div id="fish-price-line" style="width: 100%; height: 100%;"></div>
+            </div>
+          </div>
+      
+          <!-- 右价格数据展示 -->
+          <div style="flex: 1.3; background: rgba(255, 255, 255, 0.1); border-radius: 8px; padding: 4px 4px; font-size: 14px; color: #ffffff; transform: translateY(-20px);">
+            <div style="margin-bottom: 12px; font-weight: bold; color: #a0e0ff; display: flex; align-items: center; gap: 6px;">
+              单位 <span style="padding: 2px 8px; background-color: #00c853; color: white; border-radius: 16px; font-size: 12px;">元/尾</span>
+            </div>
+      
+            <div style="background-color: rgba(255,255,255,0.1); padding: 6px 10px; border-radius: 4px; margin-bottom: 6px; font-weight: bold; color: #a0e0ff;">当日价格</div>
+            <div style="margin-left: 10px;">
+              <div id="today-price"><span style="color:#ccc">当日均价：</span><span style="color:#fff; font-weight: bold;">--</span></div>
+              <div id="compare-price"><span style="color:#ccc">相对前日：</span><span style="color:#fff; font-weight: bold;">--</span></div>
+            </div>
+      
+            <div style="background-color: rgba(255,255,255,0.1); padding: 6px 10px; border-radius: 4px; margin-top: 12px; margin-bottom: 6px; font-weight: bold; color: #a0e0ff;">近7日价格</div>
+            <div style="margin-left: 10px;">
+              <div id="high-price"><span style="color:#ccc">最高价：</span><span style="color:#fff; font-weight: bold;">--</span></div>
+              <div id="low-price"><span style="color:#ccc">最低价：</span><span style="color:#fff; font-weight: bold;">--</span></div>
+              <div id="avg-price"><span style="color:#ccc">平均价：</span><span style="color:#fff; font-weight: bold;">--</span></div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+        <!-- 的范围 -->
+
+    </div>
+    <!-- 右侧小面板 -->
+    <div class="right-panel">
+        <!-- 模块C -->
+        <div class="combined-module">
+            <div class="module-title">传感器信息区块</div>
+            <div class="time-metrics4">
+                <div class="metric-item4">
+                    <span class="metric-label4">平均传输时长</span>
+                    <span class="metric-value blue-text4" id="avg-transmission-time4">02:45s</span>
+                </div>
+                <div class="metric-item4">
+                    <span class="metric-label4">平均处理时长</span>
+                    <span class="metric-value blue-text4" id="avg-processing-time4">00:02s</span>
+                </div>
+            </div>
+            <div class="sensor-info4">         
+                <div class="device-table4">
+                    <div class="table-header4">
+                        <span>类型</span>
+                        <span>编号</span>
+                        <span>大小</span>
+                    </div>
+                    <div class="table-row4">
+                        <span>水底摄像头</span><span>video-1</span><span>4Mb</span>
+                    </div>
+                    <div class="table-row4">
+                        <span>4CIF摄像头</span><span>video-2</span><span>128kb</span>
+                    </div>
+                    <div class="table-row4">
+                        <span>网络摄像头</span><span>video-3</span><span>100kb</span>
+                    </div>
+                    <div class="table-row4">
+                        <span>音响设备</span><span>sonar-1</span><span>10kb</span>
+                    </div>
+                    <div class="table-row4">
+                        <span>传感器设备</span><span>sensor-1</span><span>2kb</span>
+                    </div>
+                    <div class="table-row4">
+                        <span>气象站</span><span>meteor-1</span><span>500b</span>
+                    </div>
+                </div>
+                
+            </div>
+            
+            <div class="module-title">数据库信息</div>
+            <div class="database-stats4">
+                <div class="stats-item4">
+                    <span class="icon database-icon4">💾</span> <!-- 数据库图标 -->
+                    <span id="db-type4">MySQL，HBase</span>
+                </div>
+                <div class="stats-item4">
+                    <span class="icon query-icon4">🔍</span> <!-- 查询图标 -->
+                    <span id="query-success4">查询/成功：869次</span>
+                </div>
+                <div class="stats-item4">
+                    <span class="icon time-icon4">⏱️</span> <!-- 时钟图标 -->
+                    <span id="avg-query-time4">平均耗时：4.67s</span>
+                </div>
+            </div>
+                     <!-- 显示上次更新时间 -->
+            <div id="last-updated" style="color: #89c3ff; margin-top: 10px; font-size: 14px;">
+                上次更新时间: <span id="update-time">--</span>
+            </div>
+    </div>
+</div>
+
+
+
+<!-- 价格部分 start------------------------------------------------------------- -->
+<script src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"></script>
+<script>
+const mockPriceData = {
+  "广东茂名": {
+    "鱼苗": [0.31, 0.31, 0.31, 0.31, 0.31, 0.31, 0.28],
+    "草鱼": [5.1, 5.2, 5.0, 5.05, 5.2, 5.15, 5.1]
+  },
+  "青岛胶州": {
+    "鱼苗": [0.30, 0.30, 0.30, 0.31, 0.31, 0.30, 0.30],
+    "草鱼": [5.0, 5.1, 5.05, 5.1, 5.2, 5.25, 5.3]
+  }
+};
+
+const dateLabels = ['05-08', '05-09', '05-10', '05-11', '05-12', '05-13', '05-14'];
+const chart = echarts.init(document.getElementById('fish-price-line'));
+
+function updateFishPriceChart() {
+  const region = document.getElementById('region').value;
+  const fish = document.getElementById('fish').value;
+  const prices = mockPriceData[region][fish];
+
+  chart.setOption({
+    tooltip: { trigger: 'axis' },
+    xAxis: {
+      type: 'category',
+      data: dateLabels,
+      axisLine: { lineStyle: { color: '#fff' } }
+    },
+    yAxis: {
+      type: 'value',
+      axisLine: { lineStyle: { color: '#fff' } },
+      splitLine: { show: false }
+    },
+    series: [{
+    name: fish,
+    type: 'line',
+    data: prices,
+    areaStyle: { color: 'rgba(255, 255, 255, 0.5)' },  // 可选：淡白色面积
+    lineStyle: { color: '#ffffff', width: 3 },
+    itemStyle: { color: '#ffffff' }
+    }]
+  });
+
+  document.getElementById('region-label').textContent = region;
+  document.getElementById('fish-label').textContent = fish;
+
+  const today = prices[6];
+  const yesterday = prices[5];
+  const delta = today - yesterday;
+  const trend = delta > 0 ? '上涨' : (delta < 0 ? '下跌' : '价格平稳');
+  const rate = (Math.abs(delta / yesterday) * 100).toFixed(2);
+  const max = Math.max(...prices).toFixed(2);
+  const min = Math.min(...prices).toFixed(2);
+  const avg = (prices.reduce((a, b) => a + b, 0) / prices.length).toFixed(2);
+
+  document.getElementById('today-price').innerHTML = `<span style='color:#ccc'>当日均价：</span><span style='color:#fff; font-weight:bold;'>${today.toFixed(2)} 元/尾</span>`;
+  document.getElementById('compare-price').innerHTML = `<span style='color:#ccc'>相对前日：</span><span style='color:#fff; font-weight:bold;'>${trend === '价格平稳' ? trend : trend + Math.abs(delta).toFixed(2) + '元，幅度 ' + rate + '%'}</span>`;
+  document.getElementById('high-price').innerHTML = `<span style='color:#ccc'>最高价：</span><span style='color:#fff; font-weight:bold;'>${max} 元/尾</span>`;
+  document.getElementById('low-price').innerHTML = `<span style='color:#ccc'>最低价：</span><span style='color:#fff; font-weight:bold;'>${min} 元/尾</span>`;
+  document.getElementById('avg-price').innerHTML = `<span style='color:#ccc'>平均价：</span><span style='color:#fff; font-weight:bold;'>${avg} 元/尾</span>`;
+}
+
+document.addEventListener("DOMContentLoaded", updateFishPriceChart);
+</script>
+<!-- 价格部分 end------------------------------------------------------------- -->
+
+<!-- 地图part绘制 -->
+<script>
+    fetch('https://geo.datav.aliyun.com/areas/bound/geojson?code=100000_full')
+        .then(res => res.json())
+        .then(geoJson => {
+            echarts.registerMap('china', geoJson);
+            var myChart = echarts.init(document.getElementById('map-container'));
+
+            var points = [
+                {
+                    name: '杭州',
+                    value: [120.15, 30.28, parseFloat((30+ Math.random() * 4 - 2).toFixed(2))],
+                    provider: '阿里云',
+                    info: '数据中心',
+                    itemStyle: {
+                        color: '#00FF99'  // 红色
+                    }
+                },
+                {
+                    name: '北京',
+                    value: [116.46, 39.92, parseFloat((25 + Math.random() * 4 - 2).toFixed(2))],
+                    provider: '百度云',
+                    info: '北方节点',
+                    itemStyle: {
+                        color: '#FFC300'  // 红色
+                    }
+                },
+                {
+                    name: '广州',
+                    value: [113.23, 23.16, parseFloat((20+ Math.random() * 4 - 2).toFixed(2))],
+                    provider: '腾讯云',
+                    info: '南方节点',
+                    itemStyle: {
+                        color: '#D966FF'  
+                    }
+                },
+                {
+                    name: '重庆',
+                    value: [106.55, 29.57, parseFloat((22 + Math.random() * 4 - 2).toFixed(2))],  
+                    provider: '华为云',
+                    info: '西南节点',
+                    itemStyle: {
+                        color: ' #FF3366' 
+                    }
+                }
+            ];
+
+            var defaultPoint = points[0];
+            var infoText = `数据中心\n地点：${defaultPoint.name}\n服务商：${defaultPoint.provider}\n连接：${defaultPoint.value[2]}ms`;          
+
+            var option = {
+                    tooltip: {
+                        trigger: 'item',
+                        show: false
+                    },
+                    
+                    geo: {
+                        map: 'china',
+                        roam: false,
+                        zoom: 1.63,
+                        center: [113.6, 35.0],
+                        label: {
+                            show: false,
+                            
+                        },
+                        itemStyle: {//边界线
+                            areaColor: 'transparent',   
+                            borderColor: '#39A7FF',     
+                            borderWidth: 1              
+                        },
+                        emphasis: {
+                            label: {
+                                show: false,
+                            },
+                            itemStyle: {
+                                areaColor: 'transparent'
+                            }
+                        }
+                    },
+                    
+                    series: [
+                        {
+                            name: '城市',
+                            type: 'scatter',
+                            coordinateSystem: 'geo',
+                            data: points,
+                            // symbol: 'pin',
+                            symbol: 'path://M215.7 499.2C267 435 384 279.4 384 192C384 86 298 0 192 0S0 86 0 192c0 87.4 117 243 168.3 307.2c12.3 15.3 35.1 15.3 47.4 0zM192 128a64 64 0 1 1 0 128 64 64 0 1 1 0-128z', 
+                            // symbolSize: function (val) {
+                            //     return val[2] ;
+                            // },
+                            symbolSize: function(val) {
+                                return [val[2] * 0.75, val[2]];  // 宽度是高度的60%
+                            },
+                            symbolKeepAspect: false,
+                            label: {
+                                formatter: '{b}',
+                                position: 'right',
+                                show: false,
+                                fontSize: 10,         
+                                color: '#ffffff'     
+                            },
+                            emphasis: {
+                                label: {
+                                    show: true,
+                                    fontSize: 20,
+                                    color:'#ffffff'
+                                }
+                            }
+                        },
+                        {
+                            name: '连接线',
+                            type: 'lines',
+                            coordinateSystem: 'geo',
+                            zlevel: 2,
+                            effect: {
+                                show: true,
+                                period: 6,
+                                trailLength: 0.2,
+                                color: '#fff',
+                                symbol: 'arrow',
+                                symbolSize: 6
+                            },
+                            lineStyle: {
+                                color: '#00FFFF',
+                                width: 1,
+                                opacity: 0.6,
+                                curveness: 0.2
+                            },
+                            data: [
+                                {
+                                    coords: [points[1].value, points[0].value] 
+                                },
+                                {
+                                    coords: [points[3].value, points[0].value]  
+                                },
+                                {
+                                    coords: [points[3].value, points[1].value]  
+                                },
+                                {
+                                    coords: [points[3].value, points[2].value]  
+                                }
+                            ]
+                        }
+                    ],         
+
+                    graphic: [
+                            {
+                                type: 'group',     
+                                id: 'infoCard',  
+                                left: '65%',       
+                                top: '37%',     
+                                children: [     
+                                {
+                                    type: 'rect', 
+                                    z: 100,     
+                                    left: -90,
+                                    top:-5,
+                                    shape: { width: 170, height: 100 }, 
+                                    style: {
+                                        fill: 'rgba(11, 61, 145, 0.85)',  
+                                        stroke: '#39A7FF',               
+                                        lineWidth: 1,                    
+                                        shadowBlur: 10,               
+                                        shadowColor: '#000'             
+                                    }
+                                },
+                                {
+                                    id: 'infoText',   
+                                    type: 'text',      
+                                    // left: 'center',
+                                    left:-80,
+                                    z: 200,   
+                                    style: {
+                                        text:infoText,
+                                        font: '14px Microsoft YaHei',
+                                        lineHeight: 21,
+                                        // align: 'center',
+                                        fill: '#E6F7FF',
+                                        stroke: '#39A7FF',
+                                        lineWidth: 0.3
+                                        // shadowBlur: 15,
+                                        // shadowColor: 'rgba(0, 255, 255, 0.6)',
+                                        
+                                
+                                }
+                                }
+                                ]
+                            }
+                            ]
+                };
+
+            myChart.setOption(option);
+
+            function updateValue() {
+
+                defaultPoint.value[2] = parseFloat((point.value[2] + (Math.random() * 4 - 2)).toFixed(2));
+
+                infoText = `数据中心\n地点：${defaultPoint.name}\n服务商：${defaultPoint.provider}\n连接：${defaultPoint.value[2]}ms`;
+                        
+                myChart.setOption({
+                    graphic: {
+                        elements: [
+                            {
+                                id: 'infoText',
+                                type: 'text',      
+                                // left: 'center', 
+                                left:-80,
+                                style: {
+                                    text: infoText,
+                                    font: '14px Microsoft YaHei',
+                                    lineHeight: 21,
+                                    fill: '#E6F7FF',
+                                    stroke: '#39A7FF',
+                                    lineWidth: 0.3,
+                                }
+                            }
+                        ]
+                    }
+                });
+            }       
+
+            // 启动定时器
+            // console.log("kaishi一次完成");
+            setInterval(updateValue, 10000);
+            // console.log("执行一次完成");
+            
+
+            myChart.on('click', function (params) {
+                    if (params.seriesType === 'scatter') {
+                        defaultPoint = params.data;
+                        infoText = `数据中心\n地点：${defaultPoint.name}\n服务商：${defaultPoint.provider}\n连接：${defaultPoint.value[2]}ms`;
+                        
+                        myChart.setOption({
+                            graphic: {
+                                elements: [
+                                    {
+                                        id: 'infoText',
+                                        type: 'text',      
+                                        // left: 'center', 
+                                        left:-80,
+                                        style: {
+                                            text: infoText,
+                                            font: '14px Microsoft YaHei',
+                                            lineHeight: 21,
+                                            fill: '#E6F7FF',
+                                            stroke: '#39A7FF',
+                                            lineWidth: 0.3,
+                                        }
+                                    }
+                                ]
+                            }
+                        });
+                    }
+            });
+
+            window.addEventListener('resize', function() {
+                    myChart.resize();
+                });
+        
+        });
+</script>
+
+
+<!-- tww's script  start-->
+<script>
+    function updateSensorData() {
+        // 更新传输时长
+        const avgTransmissionTime = getRandomTime();
+        document.getElementById('avg-transmission-time4').textContent = `${avgTransmissionTime}s`;
+
+        // 更新处理时长
+        const avgProcessingTime = getRandomTime();
+        document.getElementById('avg-processing-time4').textContent = `${avgProcessingTime}s`;
+    }
+
+    function updateDatabaseStats() {
+        // // 更新数据库类型
+        const dbType = getRandomDbType();
+        document.getElementById('db-type4').textContent = dbType;
+
+        // 更新查询成功次数
+        const querySuccess = getRandomQueryCount();
+        document.getElementById('query-success4').textContent = `查询/成功：${querySuccess}次`;
+
+        // 更新平均查询耗时
+        const avgQueryTime = getRandomTime();
+        document.getElementById('avg-query-time4').textContent = `平均耗时：${avgQueryTime}s`;
+        
+        // 获取并显示上次更新时间
+        const now = new Date();
+        const timeString = `${now.getFullYear()}-${(now.getMonth() + 1).toString().padStart(2, '0')}-${now.getDate().toString().padStart(2, '0')} ${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}`;
+        document.getElementById('update-time').textContent = timeString;
+    }
+
+    // 模拟获取随机时间
+    function getRandomTime() {
+        const min = 1; 
+        const max = 10; 
+        const randomTime = (Math.random() * (max - min) + min).toFixed(2); // 保留两位小数
+        return randomTime;
+    }
+
+    // 模拟获取随机数据库类型
+    function getRandomDbType() {
+        const dbTypes = ['MySQL, HBase', 'MongoDB, Redis', 'PostgreSQL, Cassandra'];
+        const randomIndex = Math.floor(Math.random() * dbTypes.length);
+        return dbTypes[randomIndex];
+    }
+
+    // 模拟获取随机查询成功次数
+    function getRandomQueryCount() {
+        return Math.floor(Math.random() * 1000);
+    }
+
+    // 每5秒更新一次数据
+    setInterval(() => {
+        updateSensorData();
+        updateDatabaseStats();
+    }, 50000); // 每5000毫秒（即5秒）更新一次
+
+
+</script>
+<!-- tww's script  end-->
+<!-- tww's style start-->
+<style>
+
+    .sensor-info4 {
+        background: rgba(26, 43, 60, 0.3); /* 明亮的深色透明背景 */
+        padding: 8px; /* 更小的内边距 */
+        margin: 4px; /* 更小的外边距 */
+        border-radius: 6px; /* 更圆润的边角 */
+        color: #ecf0f1; /* 更亮的文字颜色 */
+        box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2); /* 增强阴影效果，提升层次感 */
+        backdrop-filter: blur(4px); /* 背景模糊，增强层次感 */
+        /* transition: background 0.3s ease, box-shadow 0.3s ease; 添加动态过渡效果 */
+    }
+
+
+
+    /* 数据库统计区块 */
+    .database-stats4 {
+        background: rgba(26, 43, 60, 0.5); /* 明亮的深色透明背景 */
+        padding: 12px;
+        margin: 12px;
+        border-radius: 8px; /* 更圆润的边角 */
+        color: #ecf0f1; /* 更亮的文字颜色 */
+        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2); /* 增强阴影效果，提升层次感 */
+        backdrop-filter: blur(4px); /* 背景模糊，增强层次感 */
+        transition: background 0.3s ease, box-shadow 0.3s ease; /* 添加动态过渡效果 */
+    }
+
+    /* 动态效果：鼠标悬停时改变背景和阴影 */
+    .database-stats4:hover {
+        background: rgba(7, 80, 128, 0.9); /* 更亮的背景颜色 */
+        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3); /* 增强阴影效果 */
+    }
+
+    .time-metrics4 {
+        display: flex;
+        gap: 16px;
+        margin-bottom: 20px;
+    }
+
+    .metric-item4 {
+        background: rgba(58, 83, 106, 0.85); /* 提亮的透明卡片背景 */
+        text-align: center;
+        flex: 1;
+        padding: 16px;
+        border-radius: 10px; /* 更大圆角 */
+        box-shadow: 0 6px 12px rgba(0, 0, 0, 0.2); /* 更加明显的阴影效果 */
+        transition: background 0.3s ease, transform 0.3s ease; /* 添加动态效果 */
+    }
+
+    /* metric-label 样式调整（蓝色调） */
+    .metric-label4 {
+        font-size: 16px;
+        font-weight: bold;
+        color: #3498db; /* 亮蓝色字体 */
+        background: linear-gradient(to right, #74bded, #deb3f1); /* 蓝色渐变背景 */
+        -webkit-background-clip: text; /* 背景渐变应用于文本 */
+        background-clip: text; /* 标准属性 */
+        color: transparent; /* 使文本本身透明 */
+        text-shadow: 1px 1px 6px rgba(0, 0, 0, 0.3); /* 强化文本阴影效果 */
+        transition: color 0.3s ease, text-shadow 0.3s ease; /* 平滑过渡 */
+    }
+
+    /* 鼠标悬停时的动态效果 */
+    .metric-label4:hover {
+        color: #cca3ef; /* 鼠标悬停时改变颜色为蓝绿色 */
+        text-shadow: 2px 2px 8px rgba(0, 0, 0, 0.5); /* 增强文本阴影 */
+    }
+
+
+
+    .table-header4 {
+        background: rgba(52, 152, 219, 0.9); /* 更亮的表头背景 */
+        display: grid;
+        grid-template-columns: 2fr 2fr 1fr;
+        color: #fff;
+        padding: 8px;
+        border-radius: 8px;
+        font-weight: bold;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); /* 轻微阴影效果 */
+        transition: background 0.3s ease; 
+    }
+
+
+
+    .table-row4 {
+        display: grid;
+        grid-template-columns: 2fr 2fr 1fr; /* 调整列宽，确保内容更紧凑 */
+        padding: 10px; /* 减小内边距 */
+        border-bottom: 1px solid rgba(52, 152, 219, 0.5); /* 更亮的分隔线 */
+        transition: transform 0.3s ease, box-shadow 0.3s ease, background-color 0.3s ease, background-image 0.3s ease; /* 添加渐变过渡效果 */
+    }
+
+    /* 鼠标悬停时的动态效果 */
+    .table-row4:hover {
+        background-image: linear-gradient(to right, rgba(161, 208, 239, 0.1), rgba(52, 152, 219, 0.3)); /* 渐变背景效果 */
+        box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2); /* 添加阴影效果 */
+        transform: translateY(-5px); /* 悬浮效果：元素向上移动 */
+    }
+
+
+
+    /* 单个数据项的样式 */
+    .stats-item4 {
+        display: flex;
+        align-items: center;
+        margin-bottom: 8px; /* 减少每项之间的间距 */
+        font-size: 16px; /* 调整字体大小 */
+        transition: background-color 0.3s ease, transform 0.3s ease; /* 动画效果 */
+    }
+
+    /* 图标样式 */
+    .icon4 {
+        font-size: 18px; /* 调整图标的大小 */
+        margin-right: 8px; /* 减少图标与文本之间的间距 */
+    }
+
+    /* 为不同的图标指定颜色 */
+    .database-icon4 {
+        color: #2980b9; /* 蓝色 */
+    }
+
+    .query-icon4 {
+        color: #27ae60; /* 绿色 */
+    }
+
+    .time-icon4 {
+        color: #f39c12; /* 黄色 */
+    }
+
+    /* 鼠标悬停时的数据项效果 */
+    .stats-item4:hover {
+        background-color: rgba(183, 214, 234, 0.2); /* 鼠标悬停时的背景颜色 */
+        transform: translateX(5px); /* 向右移动效果 */
+    }
+
+    /* 模块标题样式 */
+    .module-title4 {
+        font-size: 18px;
+        /* font-weight: bold; */
+        color: #3498db;
+        margin-bottom: 10px; /* 减少标题与内容之间的间距 */
+    }
+</style>
+<!-- tww's style start-->
+
+<!-- 左上script部分 start------------------------------------------------------------- -->
+<script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/echarts-gl@2.0.9/dist/echarts-gl.min.js"></script>
+<script>
+    // 渲染数字框
+    const total = '01038';
+    const totalBox = document.getElementById('total-boxes');
+    total.split('').forEach(d => {
+      const span = document.createElement('span');
+      span.className = 'digit-box';
+      span.innerText = d;
+      totalBox.appendChild(span);
+    });
+    const unit = document.createElement('span');
+    unit.className = 'unit';
+    unit.innerText = '单位：T';
+    totalBox.appendChild(unit);
+
+    // 圆圈图
+    // const circle = echarts.init(document.getElementById('circle-chart'));
+    // circle.setOption({
+    //   series: [{
+    //     type: 'pie',
+    //     radius: ['70%', '90%'],
+    //     label: {
+    //       position: 'center',
+    //       formatter: '999\n进程总量',
+    //       fontSize: 16,
+    //       color: '#00c3ff',
+    //     },
+    //     data: [
+    //       { value: 900, name: 'used' },
+    //       { value: 100, name: 'empty', itemStyle: { color: 'transparent' } }
+    //     ]
+    //   }],
+    //   backgroundColor: 'transparent'
+    // });
+    const circle = echarts.init(document.getElementById('circle-chart'));
+    circle.setOption({
+    backgroundColor: 'transparent',
+    series: [{
+        type: 'pie',
+        radius: ['70%', '90%'],
+        avoidLabelOverlap: false,
+        label: {
+        show: true,
+        position: 'center',
+        formatter: '999\n进程总量',
+        fontSize: 14,
+        color: '#fffffc',
+        fontWeight: 'bold',
+        lineHeight: 24
+        },
+        data: [
+        {
+            value: 900,
+            name: 'used',
+            itemStyle: {
+            color: new echarts.graphic.LinearGradient(0, 0, 1, 0, [
+                { offset: 0, color: '#00c3ff' },
+                { offset: 1, color: '#0050b3' }
+            ])
+            },
+            emphasis: {
+            itemStyle: {
+                shadowBlur: 10,
+                shadowColor: 'rgba(0, 195, 255, 0.7)'
+            }
+            }
+        },
+        {
+            value: 100,
+            name: 'empty',
+            itemStyle: {
+            color: 'rgba(0,0,0,0.1)'
+            }
+        }
+        ]
+    }]
+    });
+
+
+
+    // 动态进度条
+    function updateHardware(cpu, mem, gpu) {
+      document.getElementById('cpu-bar').style.width = cpu + '%';
+      document.getElementById('mem-bar').style.width = mem + '%';
+      document.getElementById('gpu-bar').style.width = gpu + '%';
+    }
+    setInterval(() => {
+        fetch('/hard_status')
+            .then(res => res.json())
+            .then(({ cpu, mem, gpu }) => {
+            updateHardware(cpu, mem, gpu);
+            });
+    }, 2000);
+
+</script>
+<!-- 左上script部分 end-->
+
+{% endblock %}
